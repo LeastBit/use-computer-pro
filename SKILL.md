@@ -4,7 +4,7 @@ displayName: Use computer pro
 description: 桌面自动化总控技能。像人一样操作本机 Windows 桌面与 VMware 虚拟机（VNC 键鼠注入、vmrun 客户机执行、客户机内截图），统一调度 windows-mcp 与本机脚本两条通道，并给出坐标换算、动作校验、故障排查的完整方法。当任务需要看屏幕、点按钮、填表单、敲命令、操作无 API 的 GUI 软件，或在虚拟机里做实验、抓过程截图时使用。Use when the task needs to operate a GUI, e.g. click, type, screenshot, drive a VM, or automate desktop workflows.
 description_zh: 桌面自动化总控：本机 Windows 与 VMware 虚拟机的统一操作方法，含两条控制通道的选型、坐标换算、校验闭环与故障速查。
 description_en: Unified desktop automation for local Windows and VMware guests, with channel selection, coordinate math, verify-loops and a troubleshooting playbook.
-version: 1.1.0
+version: 1.2.0
 agent_created: true
 tags:
   - computer-use
@@ -232,7 +232,10 @@ connect → grab(full=True)        # 先确认画面
 
 ---
 
-## 5. VMware 虚拟机专项（本技能的重点）
+## 5. VMware 虚拟机专项（进阶）
+
+> 绝大多数任务发生在**本机**。这一节是同一套方法论的第二类目标：
+> 当被测系统必须跑在隔离环境里（做实验、跑病毒、装老系统）时，才把客户机当作"另一台电脑"来操作。
 
 ### 5.1 打开客户机的 VNC 通道
 
@@ -447,6 +450,8 @@ Snapshot → 读全部 label → 按 label 依次 Click + Type → 每 3~5 项 W
 | `scripts/vnc_ctl.py` | VMware VNC 客户端：`size / shot / click x y [n] / rclick / drag / key / text`（`n=2` 即双击） |
 | `scripts/des.py` | VNC 认证用纯 Python DES（含标准测试向量） |
 | `scripts/vm_guest.py` | vmrun 封装：`exec/shot/put/get/list` |
+| `scripts/local_fast.py` | **本机快路径**：PAUSE=0、整窗预读、坐标点击、画面哈希校验 |
+| `scripts/bench_local.py` | 本机性能基准，在自己机器上复现 §12 的数字 |
 
 ```bash
 cd ~/.workbuddy/skills/use-computer-pro/scripts
@@ -468,3 +473,77 @@ python vm_guest.py --vmx "..." --gu user --gp pass get  --remote /tmp/out.txt --
 ```
 
 细节与更多场景见 `references/troubleshooting.md`、`references/vmware-internals.md`。
+
+---
+
+## 12. 性能：本机优先
+
+技能的第一目标是**本机**——大多数人的任务就在自己这台电脑上。虚拟机是同一套方法论的第二类目标，性能问题也先在本机解决。
+
+### 12.1 实测数据（Windows 11 / 2560×1600 / Python 3.13）
+
+复现方式：`python scripts/bench_local.py`。**不要照抄别处的数字，在自己机器上跑一遍。**
+
+| 操作 | 朴素写法 | 优化后 | 差距 |
+|---|---|---|---|
+| 鼠标点击 | `pyautogui.click` 默认 `PAUSE=0.1` → **107 ms** | `PAUSE=0` → **0.9 ms** | ~119× |
+| 点击 UIA 元素 | `element.click_input()` → **475 ms** | 缓存坐标 + 坐标点击 → **0.9 ms** | ~528× |
+| 取窗口（缓存命中） | 每次 `Desktop().window()` → **125 ms** | `IsWindow` 校验句柄 → **0.02 ms** | ~6000× |
+| 元素定位 | 每次 `child_window(...).exists()` → **166 ms** | 整窗预读后查字典 → **0.01 ms** | ~16000× |
+| 整窗预读（一次性） | — | 48 元素 **103 ms** | — |
+| 全屏截图 | `ImageGrab.grab()` → 56 ms | 区域 640×480 → 52 ms | 基本持平 |
+
+**典型 10 步任务**：朴素写法 ≈ 10×475 = 4.75 s（还不含校验）；优化后 ≈ 103 ms 预读 + 10×0.9 ms ≈ **112 ms**。差 40 倍以上。
+
+### 12.2 四条硬规则
+
+1. **第一步就 `pyautogui.PAUSE = 0`。**
+   默认值是 0.1 秒/动作，它藏在库的初始化里，不设就一直付钱。100 次动作白等 10 秒。
+
+2. **UIA 只用来「找」，不用来「点」。**
+   元素对象上的 `click_input()` 每次都要重读属性并做内部等待（实测 475 ms）；
+   拿到**屏幕坐标**后用 `pyautogui.click(x, y)` 只要 0.9 ms。同理，`rectangle()` 一次 83 ms，别反复取。
+
+3. **一个窗口要点多个元素时，先整窗预读一次。**
+   枚举 + 读名字 + 读矩形 ≈ 100–150 ms，之后全是本地字典查找。
+   反过来，每点一个元素现查一次，就是每个 166 ms。
+
+4. **用「等变化」代替 `sleep`。**
+   `wait_change()` 以 60 ms 轮询画面哈希，状态一变立刻返回；固定 `sleep(2)` 平均浪费一半以上时间。
+
+### 12.3 快路径用法
+
+```python
+import local_fast as lf
+
+lf.setup()                       # PAUSE=0、关掉 FAILSAFE
+w = lf.win("计算器|Calculator")   # 首次 ~125ms，之后 0.02ms
+lf.prime(w)                      # 一次性预读整窗元素（约 100ms）
+
+lf.click(w, "七")                # 命中预读表：0.9ms
+lf.click(w, "八")
+lf.click(w, (416, 916))          # 也可以直接给坐标
+lf.type_text("hello")            # 整串输入，0.5ms/字符
+lf.wait_change(w, timeout=2)     # 等界面真的变了
+lf.save("out.png", window=w)     # 窗口级截图
+lf.invalidate(w)                 # 界面结构变了才清缓存
+```
+
+### 12.4 反模式清单
+
+| 反模式 | 代价 | 改法 |
+|---|---|---|
+| 每步都 `Snapshot(use_ui_tree=true)` | 120 ms+/次 | 一次快照多次动作；界面变了再刷 |
+| 用 label 点击却每步重新快照 | 快照+点击 ≈ 600 ms | 缓存 label→坐标映射 |
+| 每个动作后 `sleep(1)` | 白等 | `wait_change()` / `wait_stable()` |
+| 全屏截图判断一个小按钮 | 56 ms + 传输 | 窗口级或区域截图 |
+| 逐字符 `press` 长文本 | 比 `write` 慢且易丢键 | `write(text)` 或剪贴板 |
+| 能用 PowerShell/COM/文件接口却去点界面 | 数量级差距 | 见 §1：能用接口就别点鼠标 |
+
+### 12.5 什么时候"慢"是对的
+
+- 需要人看得懂的回放、演示录制：保留 50–100 ms 的动作间隔，画面才不会跳。
+- 跨进程焦点切换后立刻输入：先 `wait_change` 确认焦点到位，省下的 200 ms 会变成"打错窗口"。
+- 涉及不可逆操作（删除、提交、支付）：宁可慢，先截图留证再动手。
+
+> 一句话：**该省的是机械等待，不该省的是校验。**
