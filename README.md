@@ -192,6 +192,23 @@ assets/logo.png
 以及那些在真实机器上翻过的车：坐标偏 1.18 倍、VNC 握手 EOF、`SetEncodings` 静默挂起、
 `mks.enable3d` 黑屏、重连丢焦点、VFR 找不到帧 —— 它们现在都是上面那张表里的一行。
 
+### 关于许可（重要）
+
+本仓库的 **MIT 只覆盖本仓库自己的代码**（`scripts/`、`examples/wall/`、文档与脚本），
+上述项目各自保留自己的许可证，**不是 MIT**：
+
+| 项目 | 许可证 | 备注 |
+|---|---|---|
+| windows-mcp | MIT | 与本仓库兼容 |
+| pyautogui · pywinauto | BSD-3-Clause | 宽松许可，保留版权声明即可 |
+| Metasploit Framework | BSD-3-Clause | 仅用于演示环境的攻击链，未随仓库分发 |
+| noVNC | MPL-2.0 | 仅在 `examples/wall` 里作为 npm 依赖引用，**未 vendor 源码** |
+| FFmpeg | LGPL-2.1+ / GPL-2.0+ | 带 libx264 的构建为 GPL；仅作为本机录制工具使用，未分发二进制 |
+| Remotion | Remotion License | 源码可见但非 OSI 开源；个人与小团队免费，4 人以上公司需购买授权 |
+| Drupal · VMware Workstation | GPL-2.0 / 商业专有 | 仅作为演示靶场与虚拟化平台使用 |
+
+一句话：**引用与致谢不等于授权兼容**。如果你要把本项目并入商业产品，请逐项复核上表。
+
 ---
 
 ## License
