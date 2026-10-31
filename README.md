@@ -29,7 +29,7 @@
 
 <p align="center">
   <a href="https://github.com/LeastBit/use-computer-pro/releases/tag/v1.0.0">
-    <img src="https://img.shields.io/badge/%E2%96%B6%20%E5%AE%8C%E6%95%B4%E6%BC%94%E7%A4%BA%E7%89%87-78s%20%2F%201080p-0020B8?style=for-the-badge" alt="完整演示片" />
+    <img src="https://img.shields.io/badge/%E2%96%B6%20%E5%AE%8C%E6%95%B4%E6%BC%94%E7%A4%BA%E7%89%87-86s%20%2F%201080p-0020B8?style=for-the-badge" alt="完整演示片" />
   </a>
 </p>
 
@@ -56,6 +56,17 @@ Win7   : [*] Sending MS12-020 ... 210 bytes sent
 ```
 
 左边在打字，右边在两秒内蓝屏。这不是脚本调 API，是**一只手同时按在两台机器上**。
+
+### 演示三：真作业 —— 一份二十多页的实验报告
+
+比画两个对勾复杂得多的活，也是它做的：
+
+```
+逐步操作 → 每步截图 → 定位关键行画红框 → 逐图写分析 → 写进模板表格 → 导出 docx
+```
+
+20 张带红框的截图、20 段逐图分析、二十多页正文 —— 人只负责说"做实验八"，
+剩下的搬运、截图、标注、排版全是它自己走完的。
 
 ---
 
