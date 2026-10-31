@@ -1,10 +1,10 @@
 ---
 name: use-computer-pro
 displayName: Use computer pro
-description: 桌面自动化总控技能。像人一样操作本机 Windows 桌面与 VMware 虚拟机（VNC 键鼠注入、vmrun 客户机执行、客户机内截图），统一调度 windows-mcp、windows-control 脚本、Rebind 三条通道，并给出坐标换算、动作校验、故障排查的完整方法。当任务需要看屏幕、点按钮、填表单、敲命令、操作无 API 的 GUI 软件，或在虚拟机里做实验、抓过程截图时使用。Use when the task needs to operate a GUI, e.g. click, type, screenshot, drive a VM, or automate desktop workflows.
-description_zh: 桌面自动化总控：本机 Windows 与 VMware 虚拟机的统一操作方法，含三条控制通道的选型、坐标换算、校验闭环与故障速查。
+description: 桌面自动化总控技能。像人一样操作本机 Windows 桌面与 VMware 虚拟机（VNC 键鼠注入、vmrun 客户机执行、客户机内截图），统一调度 windows-mcp 与本机脚本两条通道，并给出坐标换算、动作校验、故障排查的完整方法。当任务需要看屏幕、点按钮、填表单、敲命令、操作无 API 的 GUI 软件，或在虚拟机里做实验、抓过程截图时使用。Use when the task needs to operate a GUI, e.g. click, type, screenshot, drive a VM, or automate desktop workflows.
+description_zh: 桌面自动化总控：本机 Windows 与 VMware 虚拟机的统一操作方法，含两条控制通道的选型、坐标换算、校验闭环与故障速查。
 description_en: Unified desktop automation for local Windows and VMware guests, with channel selection, coordinate math, verify-loops and a troubleshooting playbook.
-version: 1.0.0
+version: 1.1.0
 agent_created: true
 tags:
   - computer-use
@@ -19,7 +19,116 @@ tags:
 
 一套"看得见、点得准、能自证"的桌面操作方法论。核心不是某个工具，而是**通道选型 + 坐标换算 + 动作校验 + 故障归因**这条闭环。
 
-本技能融合三个来源：`windows-mcp` 工具集、`windows-control` 脚本集（pyautogui / pywinauto）、`rebind-pc-auto-control`（Rebind MCP），再加上 VMware 虚拟机远程控制（VNC / vmrun）的实战经验。
+本技能融合两套来源：`windows-mcp` 工具集、`windows-control` 脚本集（pyautogui / pywinauto），再加上 VMware 虚拟机远程控制（VNC / vmrun）的实战经验。
+
+其中"先决条件写在最前面"这一组织形式参考了 `windows-control` 的做法 —— 它把绝对路径、Python 解释器、已装依赖、屏幕分辨率直接摆在开头，
+省掉了大量"命令跑不通"的返工。本技能沿用了这个思路，并补上 Windows-MCP 的完整安装步骤。
+
+---
+
+## 准备 · 先决条件与环境安装
+
+开工前先把两件事分清：**控制谁**、**用哪条通道**。装错目标机器是本技能最常见的翻车起点。
+
+### 目标机器矩阵
+
+| 你要控制谁 | 系统要求 | 通道 | 需要装什么 |
+|---|---|---|---|
+| 本机（跑 Agent 的那台） | Windows 10 / 11 | `windows-mcp` | 见下节，**必装** |
+| 本机（不想上 MCP） | Windows 7 及以上 | `windows-control` 脚本 | `pip install pyautogui pywinauto pygetwindow pillow` |
+| VMware 客户机 | 任意（Win7 / Kali / Linux） | 客户机 VNC | 客户机内**不用装任何东西**，只要 vmx 开 VNC |
+| 客户机内执行命令 / 取文件 | 任意 | `vmrun` guest ops | 需要 VMware Tools |
+
+> 关键约束：`windows-mcp` 依赖 UI Automation 与 Python 3.14+，官方只支持 **Windows 10 / 11**，且装在**你自己的机器**上。
+> 不要试图把它装进 Windows 7 客户机 —— 客户机一律走 VNC（见 §5）。
+
+### 安装 Windows-MCP（本机控制主通道）
+
+**1）确认 Python 版本**
+
+```bash
+python --version        # 需要 3.14 或更高
+```
+
+**2）安装 uv（包管理器）**
+
+```bash
+pip install uv
+```
+
+**3）先把服务端单独跑通**
+
+```bash
+uvx windows-mcp serve
+```
+
+首次启动会拉依赖，可能要一两分钟，甚至超时一次 —— 重跑即可。能正常起来（不报错退出）就说明环境没问题。
+
+**4）写进 WorkBuddy 的 MCP 配置**
+
+文件位置：`~/.workbuddy/mcp.json`（注意**不是** `~/.workbuddy/.mcp.json`）
+
+```json
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "command": "uvx",
+      "args": ["windows-mcp", "serve"]
+    }
+  }
+}
+```
+
+如果文件已存在，**合并**进 `mcpServers`，不要覆盖其它服务。
+
+**5）启用**
+
+重启 WorkBuddy → 连接器管理页右上角的「自定义连接器」入口 → 找到 `windows-mcp` → 点「信任」。
+启用后 `mcp__windows-mcp__*` 系列工具才会出现。
+
+#### 安装常见坑
+
+| 症状 | 原因 | 处理 |
+|---|---|---|
+| 启动就报 Python 版本不符 | 版本低于 3.14 | 升级 Python，或改装 `windows-control` 脚本通道 |
+| 客户端连不上、提示找不到 command | Microsoft Store（MSIX）版客户端沙箱不继承 PATH | `command` 改成 `uvx.exe` 的绝对路径，用 `where uvx` 查 |
+| 第一次调用超时 | 首次启动要安装依赖 | 重跑一次；之后正常 |
+| 想让它开机自启 | 每次手动起太麻烦 | `windows-mcp install`，会创建计划任务 `windows-mcp-server`，日志在 `~/.windows-mcp/server.log` |
+| 截图太大传得慢 | 全屏原图体积大 | 环境变量加 `"WINDOWS_MCP_SCREENSHOT_SCALE": "0.5"` |
+| 在 Windows 7 客户机里装 | 系统不支持 | 改用 VNC，见 §5 |
+
+### VMware 侧前提
+
+在客户机的 `.vmx` 里开启 VNC（改完需要重启客户机）：
+
+```ini
+RemoteDisplay.vnc.enabled = "TRUE"
+RemoteDisplay.vnc.port = "5911"
+RemoteDisplay.vnc.password = "vkali"
+```
+
+只需要跑命令 / 传文件的，再装 VMware Tools 以启用 `vmrun` guest ops；
+只需要看画面和键鼠的，**不需要** Tools。
+
+### Python 依赖
+
+```bash
+pip install pyautogui pywinauto pygetwindow pillow numpy
+```
+
+`scripts/` 下各脚本按需使用，`des.py` 是纯 Python 实现，无额外依赖。
+
+### 装机自检（一条条过）
+
+```bash
+python --version                      # 3.14+（用 MCP 时）
+uvx windows-mcp serve                 # 能起服务就说明 MCP 环境 OK
+python -c "import pyautogui, pywinauto, PIL; print('local ok')"
+nc -zv <客户机IP> 5900                 # 客户机 VNC 端口（端口号按 vmx 里的配置）
+vmrun -T ws list                      # 能列出运行中的虚拟机
+```
+
+四条都过，再开始操作界面。任何一条不过，先解决它 —— 后面的"点不中"十有八九是这里埋的。
 
 ---
 
@@ -38,7 +147,6 @@ tags:
 |---|---|---|---|
 | 本机 Windows 应用 | `mcp__windows-mcp__Snapshot` + `Click`/`Type` | `windows-control` 脚本 | MCP 能拿到元素 label/id，比坐标稳 |
 | 本机批量/脚本化 | `windows-control/scripts/*.py` | MCP | 一次命令做一串动作时更省调用 |
-| 本机 + 需要复杂编排 | Rebind（`ws://127.0.0.1:19561`） | 上面两者 | 需先装 Rebind 与 bun |
 | VMware 里的客户机 | 客户机 VNC（键鼠 + 画面） | 控制台 + SendInput | 控制台注入极不稳定，见 §4 |
 | 客户机里跑命令/取文件 | `vmrun` guest ops | 客户机内起 HTTP 服务 | 需要 VMware Tools |
 | 客户机截图留证 | 客户机内截图（`import`/PowerShell） | `vmrun captureScreen` | 后者要 Tools，客户机挂了会挂起 |
@@ -206,6 +314,8 @@ $vmrun = "D:\app\VMware\VMware Workstation\vmrun.exe"
 
 ## 6. windows-mcp 用法要点
 
+> 安装、配置与自检见文首「准备 · 先决条件与环境安装」；本节只讲**用法**。
+
 | 工具 | 关键参数 | 什么时候用 |
 |---|---|---|
 | `Snapshot` | `use_ui_tree=true`（默认）、`use_vision=true`、`use_annotation` | **每次动作前先调**，拿元素 label/id 与窗口状态 |
@@ -311,7 +421,7 @@ Snapshot → 读全部 label → 按 label 依次 Click + Type → 每 3~5 项 W
 
 ## 9. 安全与边界
 
-- 只操作**用户授权**的机器与窗口。VNC、Rebind 一律只监听回环地址。
+- 只操作**用户授权**的机器与窗口。VNC 一律只监听回环地址。
 - 破坏性操作（删除、格式化、批量改名、卸载、改注册表关键项）先说明影响并取得确认；删除走回收站，批量前先备份。
 - 个人目录（桌面、下载、文档）默认**只读扫描**，不主动移动或删除。
 - 截图里可能含密码、令牌、个人信息，存档前检查，不外传。

@@ -111,13 +111,37 @@ Win7   : [*] Sending MS12-020 ... 210 bytes sent
 
 ## 快速开始
 
+### 第一步：装 Windows-MCP（控制本机的主通道）
+
 ```bash
-git clone https://github.com/LeastBit/use-computer-pro.git \
-  ~/.workbuddy/skills/use-computer-pro
+python --version            # 需要 3.14+
+pip install uv
+uvx windows-mcp serve       # 先单独跑通，首次启动慢属正常
+```
+
+写进 `~/.workbuddy/mcp.json`（**不是** `.mcp.json`；文件已存在就合并，别覆盖）：
+
+```json
+{
+  "mcpServers": {
+    "windows-mcp": { "command": "uvx", "args": ["windows-mcp", "serve"] }
+  }
+}
+```
+
+重启后在连接器管理的「自定义连接器」里点「信任」启用，`mcp__windows-mcp__*` 工具才会出现。
+
+> 两个约束：`windows-mcp` 只支持 **Windows 10 / 11**（依赖 UI Automation 与 Python 3.14+），装在你自己的机器上；
+> **虚拟机里的客户机不需要装它**，走 VNC 即可。
+
+### 第二步：装技能与本地依赖
+
+```bash
+git clone https://github.com/LeastBit/use-computer-pro.git ~/.workbuddy/skills/use-computer-pro
 
 pip install pyautogui pywinauto pygetwindow pillow numpy
 
-# VNC 通道（Linux 客户机，先确认 vmx 里已配好端口与密码）
+# VNC 通道（客户机，先确认 vmx 里已配好端口与密码）
 export VNC_PORT=5911 VNC_PASS=vkali
 python scripts/vnc_ctl.py size          # 探到画面尺寸即表示通了
 python scripts/vnc_ctl.py shot /tmp/a.png
@@ -135,6 +159,8 @@ vmrun -T ws -gu kali -gp kali runProgramInGuest "<vmx>" /bin/uname -a
 ```
 
 多机同屏 + 30fps 录制，见 [`examples/wall`](examples/wall)（noVNC + 一个三十行的 WebSocket↔TCP 桥）。
+
+完整的环境前提、安装常见坑与自检清单，见 [`SKILL.md`](SKILL.md) 开头的「准备 · 先决条件与环境安装」。
 
 ---
 
