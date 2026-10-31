@@ -29,7 +29,7 @@
 
 <p align="center">
   <a href="https://github.com/LeastBit/use-computer-pro/releases/tag/v1.0.0">
-    <img src="https://img.shields.io/badge/%E2%96%B6%20%E5%AE%8C%E6%95%B4%E6%BC%94%E7%A4%BA%E7%89%87-86s%20%2F%201080p-0020B8?style=for-the-badge" alt="完整演示片" />
+    <img src="https://img.shields.io/badge/%E2%96%B6%20%E5%AE%8C%E6%95%B4%E6%BC%94%E7%A4%BA%E7%89%87-99s%20%2F%201080p-0020B8?style=for-the-badge" alt="完整演示片" />
   </a>
 </p>
 
