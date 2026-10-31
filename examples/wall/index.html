@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Control Room</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { width:1920px; height:1080px; overflow:hidden; background:#05070d; }
+  body {
+    font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    color:#e8ecf6; -webkit-font-smoothing:antialiased;
+    background:
+      radial-gradient(1200px 700px at 10% -12%, rgba(0,32,184,.34), transparent 62%),
+      radial-gradient(900px 600px at 98% 106%, rgba(8,184,168,.16), transparent 62%),
+      #05070d;
+  }
+  .grid { position:absolute; inset:0; pointer-events:none; opacity:.4;
+    background-image:
+      linear-gradient(rgba(120,150,255,.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(120,150,255,.06) 1px, transparent 1px);
+    background-size:48px 48px;
+    mask-image: radial-gradient(120% 90% at 50% 0%, #000 35%, transparent 100%); }
+
+  header { position:absolute; left:32px; right:32px; top:0; height:76px; display:flex; align-items:center; gap:14px; }
+  .logo { width:38px; height:38px; object-fit:contain; filter:drop-shadow(0 0 14px rgba(8,184,168,.5)); }
+  .brand { font-size:19px; font-weight:700; letter-spacing:.14em; }
+  .brand span { color:#08B8A8; }
+  .sub { font-size:11px; letter-spacing:.32em; color:#6b7a9c; margin-top:3px; }
+  .spacer { flex:1; }
+  .pill { display:flex; align-items:center; gap:8px; padding:7px 14px; border-radius:999px;
+    border:1px solid rgba(120,150,255,.22); background:rgba(10,16,32,.6);
+    font-size:12px; letter-spacing:.16em; color:#9fb0d0; font-variant-numeric:tabular-nums; }
+  .dot { width:8px; height:8px; border-radius:50%; background:#ff3b52; box-shadow:0 0 10px #ff3b52; animation:blink 1.6s infinite; }
+  @keyframes blink { 0%,45%{opacity:1} 55%,100%{opacity:.15} }
+
+  .pane { position:absolute; border-radius:12px; overflow:hidden; background:#070a12;
+          border:1px solid rgba(130,160,255,.34);
+          box-shadow:0 20px 60px rgba(0,0,0,.6), 0 0 0 1px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.05); }
+  .pane::after { content:""; position:absolute; left:0; right:0; top:0; height:2px; z-index:6;
+                 background:linear-gradient(90deg, #0020B8, #08B8A8 55%, transparent); opacity:.9; }
+  .pane .screen { position:absolute; inset:0; }
+  .pane .screen div { width:100%; height:100%; }
+  .tag { position:absolute; left:0; top:0; z-index:5; display:flex; align-items:center; gap:8px;
+         padding:6px 12px 6px 10px; border-bottom-right-radius:10px;
+         background:linear-gradient(180deg, rgba(4,6,12,.94), rgba(4,6,12,.6));
+         border-right:1px solid rgba(120,150,255,.16); border-bottom:1px solid rgba(120,150,255,.16);
+         font-size:11px; letter-spacing:.2em; color:#93a4c6; }
+  .tag b { color:#fff; letter-spacing:.14em; font-weight:600; }
+  .tag i { width:6px; height:6px; border-radius:50%; background:#08B8A8; box-shadow:0 0 8px #08B8A8; font-style:normal; }
+
+  #kali { left:32px; top:88px; width:1148px; height:718px; }
+  #win7 { left:1200px; top:88px; width:688px; height:516px; }
+  #dc1  { left:1200px; top:628px; width:688px; height:382px; }
+
+  .cur { position:absolute; z-index:9; width:22px; height:22px; margin:-2px 0 0 -2px;
+         pointer-events:none; opacity:0; transition:opacity .12s; filter:drop-shadow(0 2px 4px rgba(0,0,0,.8)); }
+  .cur.on { opacity:1; }
+  .cur svg { width:100%; height:100%; }
+
+  .card { position:absolute; left:32px; top:826px; width:1148px; height:184px; border-radius:12px;
+    border:1px solid rgba(120,150,255,.22);
+    background:linear-gradient(135deg, rgba(0,32,184,.22), rgba(8,184,168,.08) 68%, rgba(8,12,22,.55));
+    padding:22px 26px; display:flex; align-items:center; gap:26px; }
+  .card .big { font-size:34px; font-weight:700; line-height:1.15; letter-spacing:.01em; }
+  .card .big em { font-style:normal; color:#08B8A8; }
+  .card .desc { font-size:13px; color:#93a4c6; line-height:1.8; margin-top:9px; }
+  .card .divider { width:1px; height:104px; background:rgba(120,150,255,.18); }
+  .stats { display:flex; gap:36px; }
+  .stat .n { font-size:30px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .stat .l { font-size:10.5px; letter-spacing:.24em; color:#6b7a9c; margin-top:5px; }
+
+  footer { position:absolute; left:32px; right:32px; bottom:16px; height:26px;
+    display:flex; align-items:center; gap:14px; font-size:11px; letter-spacing:.2em; color:#4d5a78; }
+  footer .line { flex:1; height:1px; background:linear-gradient(90deg, rgba(120,150,255,.3), transparent); }
+  .ok { color:#08B8A8; }
+</style>
+</head>
+<body>
+<div class="grid"></div>
+
+<header>
+  <img class="logo" src="logo.png" alt="">
+  <div>
+    <div class="brand">USE COMPUTER <span>PRO</span></div>
+    <div class="sub">CONTROL ROOM</div>
+  </div>
+  <div class="spacer"></div>
+  <div class="pill"><span class="dot"></span>REC <span id="rec">00:00</span></div>
+  <div class="pill"><span id="clock">--:--:--</span></div>
+</header>
+
+<div class="pane" id="kali">
+  <div class="screen"><div id="s-kali"></div></div>
+  <img class="cur" id="c-kali" src="cursor.svg" alt="">
+  <div class="tag"><i></i>HOST 01 <b>KALI</b></div>
+</div>
+
+<div class="pane" id="win7">
+  <div class="screen"><div id="s-win7"></div></div>
+  <img class="cur" id="c-win7" src="cursor.svg" alt="">
+  <div class="tag"><i></i>HOST 02 <b>WINDOWS 7</b></div>
+</div>
+
+<div class="pane" id="dc1">
+  <div class="screen"><div id="s-dc1"></div></div>
+  <img class="cur" id="c-dc1" src="cursor.svg" alt="">
+  <div class="tag"><i></i>HOST 03 <b>DC-1</b></div>
+</div>
+
+<div class="card">
+  <div>
+    <div class="big">三台机器，<em>一条时间线</em></div>
+    <div class="desc">同一套 VNC 原语驱动三个 guest · 同一帧率采样 · 同一份证据链</div>
+  </div>
+  <div class="divider"></div>
+  <div class="stats">
+    <div class="stat"><div class="n">3</div><div class="l">HOSTS ONLINE</div></div>
+    <div class="stat"><div class="n">3</div><div class="l">CHANNELS</div></div>
+    <div class="stat"><div class="n">0</div><div class="l">HUMAN CLICKS</div></div>
+  </div>
+</div>
+
+<footer>
+  <span class="ok">● LINKED</span>
+  <span>ws 6081 / 6082 / 6083</span>
+  <span class="line"></span>
+  <span>RFB 3.8 · RAW</span>
+</footer>
+
+<script type="module">
+import RFB from './node_modules/@novnc/novnc/core/rfb.js';
+
+const HOSTS = [
+  ['kali', 's-kali', 6081],
+  ['win7', 's-win7', 6082],
+  ['dc1',  's-dc1',  6083],
+];
+const GEOM = { kali:[1280,800], win7:[800,600], dc1:[720,400] };
+const BOX  = { kali:[1148,718], win7:[688,516], dc1:[688,382] };
+
+for (const [name, id, port] of HOSTS) {
+  const rfb = new RFB(document.getElementById(id), `ws://127.0.0.1:${port}`, {
+    credentials: { password: 'vkali' }, shared: true, wsProtocols: ['binary'],
+  });
+  rfb.scaleViewport = true;
+  rfb.resizeSession = false;
+  rfb.background = 'rgb(7,10,18)';
+  rfb.addEventListener('disconnect', (e) => console.warn(name, e.detail));
+}
+
+const t0 = Date.now();
+const rec = document.getElementById('rec');
+const clock = document.getElementById('clock');
+let last = 0;
+
+function tick() {
+  const s = Math.floor((Date.now() - t0) / 1000);
+  rec.textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+  const d = new Date();
+  clock.textContent = [d.getHours(), d.getMinutes(), d.getSeconds()]
+    .map(v => String(v).padStart(2, '0')).join(':');
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+
+// 指针位置由驱动脚本写入 cursors.json，页面按 guest->pane 比例映射
+async function pollCursor() {
+  try {
+    const r = await fetch('cursors.json?t=' + Date.now(), { cache: 'no-store' });
+    const j = await r.json();
+    for (const name of ['kali', 'win7', 'dc1']) {
+      const el = document.getElementById('c-' + name);
+      const st = j[name];
+      if (!st) { el.classList.remove('on'); continue; }
+      const [gw, gh] = GEOM[name], [bw, bh] = BOX[name];
+      const sc = Math.min(bw / gw, bh / gh);
+      const ox = (bw - gw * sc) / 2, oy = (bh - gh * sc) / 2;
+      el.style.left = (ox + st.x * sc) + 'px';
+      el.style.top  = (oy + st.y * sc) + 'px';
+      el.classList.add('on');
+    }
+  } catch (e) { /* 文件还没生成 */ }
+  setTimeout(pollCursor, 80);
+}
+pollCursor();
+</script>
+</body>
+</html>
