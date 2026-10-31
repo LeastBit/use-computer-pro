@@ -27,6 +27,12 @@
   <img src="docs/preview.gif" width="820" alt="单机控制与双机协作演示" />
 </p>
 
+<p align="center">
+  <a href="https://github.com/LeastBit/use-computer-pro/releases/tag/v1.0.0">
+    <img src="https://img.shields.io/badge/%E2%96%B6%20%E5%AE%8C%E6%95%B4%E6%BC%94%E7%A4%BA%E7%89%87-90s%20%2F%201080p-0020B8?style=for-the-badge" alt="完整演示片" />
+  </a>
+</p>
+
 ### 演示一：单机 —— 它自己画完，自己保存
 
 一台 Windows 7，没有人碰过键盘鼠标：
